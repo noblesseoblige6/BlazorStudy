@@ -1,0 +1,16 @@
+﻿@page "/"
+
+<Timeline Title="@Title" OnPlotPointClicked="@OnClicled"></Timeline>
+
+<FluentLabel>@Id</FluentLabel>
+
+@code {
+    private int Id { get; set; } = 0;
+    private string Title { get; set; } = "Timeline";
+
+    private void OnClicled(int val)
+    {
+        Id = val;
+        Console.Write($"{val}");
+    }
+}

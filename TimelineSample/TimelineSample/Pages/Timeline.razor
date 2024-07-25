@@ -1,0 +1,12 @@
+﻿@using LiveChartsCore.SkiaSharpView.Blazor
+@using TimelineSample.Pages;
+
+<CartesianChart @ref="chart" />
+
+<FluentStack Orientation="Orientation.Horizontal">
+    <FluentButton OnClick="@(e => ResetZoom())">
+        Reset zoom
+    </FluentButton>
+    <FluentSlider Label="Testset Count" @bind-Value="TestsetCount" @bind-Value:after="OnTestsetCountChanged" Min="16" Max="128" Step="1"></FluentSlider>
+    <FluentLabel>@TestsetCount</FluentLabel>
+</FluentStack>
