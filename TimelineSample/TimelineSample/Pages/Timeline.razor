@@ -1,12 +1,38 @@
 ﻿@using LiveChartsCore.SkiaSharpView.Blazor
 @using TimelineSample.Pages;
 
-<CartesianChart @ref="chart" />
+<CartesianChart @ref="chart"
+                Title="ChartTitle"
+                Series="chartSeries"
+                XAxes="XAxes"
+                YAxes="YAxes"
+                Sections="Sections"
+                ZoomMode="LiveChartsCore.Measure.ZoomAndPanMode.PanX"
+                EasingFunction="null"
+                Tooltip="chartTooltip"
+                TooltipFindingStrategy="LiveChartsCore.Measure.TooltipFindingStrategy.CompareAllTakeClosest"
+                LegendPosition="LiveChartsCore.Measure.LegendPosition.Top"
+                Legend="chartLegend">
+</CartesianChart>
 
 <FluentStack Orientation="Orientation.Horizontal">
-    <FluentButton OnClick="@(e => ResetZoom())">
-        Reset zoom
+    <FluentButton Id="ResetZoom" OnClick="@ResetZoom">
+        <FluentIcon Value="@(new Icons.Regular.Size24.ZoomFit())" />
+        <FluentTooltip Anchor="ResetZoom">
+            Reset zoom
+        </FluentTooltip>
     </FluentButton>
-    <FluentSlider Label="Testset Count" @bind-Value="TestsetCount" @bind-Value:after="OnTestsetCountChanged" Min="16" Max="128" Step="1"></FluentSlider>
-    <FluentLabel>@TestsetCount</FluentLabel>
+    <FluentButton Id="ZoomInOn" OnClick="@ZoomInOn" Disabled="@(selectedSample is null)">
+        <FluentIcon Value="@(new Icons.Regular.Size24.ZoomIn())" Color="@Color.Error" />
+        <FluentTooltip Anchor="ZoomInOn">
+            Zoom in Selected Sample
+        </FluentTooltip>
+    </FluentButton>
+    <FluentButton Id="ZoomOutOn" OnClick="@ZoomOutOn" Disabled="@(selectedSample is null)">
+        <FluentIcon Value="@(new Icons.Regular.Size24.ZoomOut())" Color="@Color.Error" />
+        <FluentTooltip Anchor="ZoomOutOn">
+            Zoom out Selected Sample
+        </FluentTooltip>
+    </FluentButton>
+    <FluentSlider @bind-Value="TestsetCount" @bind-Value:after="OnTestsetCountChanged" Min="1" Max="128" Step="1"></FluentSlider>
 </FluentStack>

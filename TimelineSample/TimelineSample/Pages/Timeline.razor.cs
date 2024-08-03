@@ -17,6 +17,7 @@ using SkiaSharp;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Collections.ObjectModel;
 
 namespace TimelineSample.Pages
 {
@@ -85,7 +86,7 @@ namespace TimelineSample.Pages
 
         public LabelVisual? ChartTitle { get; set; }
 
-        private ISeries[]? chartSeries;
+        private ObservableCollection<ISeries> chartSeries = new();
 
         private CustomLegend chartLegend = new();
 
@@ -93,16 +94,20 @@ namespace TimelineSample.Pages
 
         private CartesianChart? chart = null!;
 
+        private List<Axis>? XAxes { get; set; }
+
+        private List<Axis>? YAxes { get; set; }
+
+        public RectangularSection[]? Sections { get; set; }
+
+        private PlotData<Sample>? selectedSample;
+
         private int TestsetCount { get; set; } = 32;
 
         private void OnTestsetCountChanged()
         {
             GeneratePlotData();
-
-            if (chart == null || chartSeries == null)
-                return;
-
-            chart.Series = chartSeries;
+            ResetZoom();
         }
 
         private Random gen = new Random();
@@ -141,7 +146,23 @@ namespace TimelineSample.Pages
             if (point.Model.IsHoverOn == false)
                 return;
 
+            selectedSample = point.Model;
             OnPlotPointClicked.InvokeAsync(point.Model.Data.Id);
+
+            Sections = new RectangularSection[]
+            {
+                new RectangularSection
+                {
+                    Xi = selectedSample.Data.Date.ToOADate(),
+                    Xj = selectedSample.Data.Date.ToOADate(),
+                    Stroke = new SolidColorPaint
+                    {
+                        Color = SKColors.Red,
+                        StrokeThickness = 3,
+                        PathEffect = new DashEffect(new float[] { 6, 6 })
+                    }
+                },
+            };
 
             point.Visual.Fill = new SolidColorPaint(new SKColor(0, 123, 255));
             chart.Invalidate(); // <- ensures the canvas is redrawn after we set the fill
@@ -170,47 +191,6 @@ namespace TimelineSample.Pages
             (point.Visual.Fill, point.Visual.Stroke) = Sample.FillAndStroke(point.Model.Data.Status);
             chart.Invalidate();
         }
-
-        public List<Axis> XAxes
-        {
-            get
-            {
-                Func<double, string> labeler = date => string.Format("{0:yy/MM/dd}", System.DateTime.FromOADate(date));
-
-                var xAxis = new Axis()
-                {
-                    Labeler = labeler,
-                    LabelsRotation = -20,
-                    TextSize = 10,
-                    SeparatorsPaint = new SolidColorPaint(SKColors.LightSlateGray)
-                    {
-                        StrokeThickness = 1,
-                        PathEffect = new DashEffect(new float[] { 3, 3 })
-                    }
-                };
-
-                return new List<Axis> { xAxis };
-            }
-        }
-
-        public List<Axis> YAxes
-        {
-            get
-            {
-                Func<double, string> labeler = c => { var e = (Sample.TestCase)(Enum.ToObject(typeof(Sample.TestCase), (int)c)); return e.GetStringValue() ?? string.Empty; };
-                var yAxis = new Axis()
-                {
-                    Labeler = labeler,
-                    MinStep = 1,
-                    MaxLimit = 5.5,
-                    MinLimit = -0.5,
-                    IsInverted = true,
-                };
-
-                return new List<Axis> { yAxis };
-            }
-        }
-
 
         DateTime RandomDay()
         {
@@ -241,26 +221,100 @@ namespace TimelineSample.Pages
                 };
             }
 
-            var lines = new List<LineSeries<PlotData<Sample>>>();
+            selectedSample = null;
+            Sections = null;
+            chartSeries.Clear();
             foreach (Sample.TestCase val in Enum.GetValues(typeof(Sample.TestCase)))
             {
-                lines.Add(SetupSeriese(testset, val.GetStringValue() ?? string.Empty));
+                chartSeries.Add(SetupSeriese(testset, val.GetStringValue() ?? string.Empty));
             }
+        }
 
-            chartSeries = lines.ToArray();
+        private void PanTo(double? start, double? end)
+        {
+            var x = XAxes?.First();
+            if (x is null)
+                return;
+
+            x.MinLimit = start;
+            x.MaxLimit = end;
         }
 
         private void ResetZoom()
         {
-            if (chart == null)
-                return;
-
-            var x = chart.XAxes.First();
-            x.MinLimit = null;
-            x.MaxLimit = null;
+            PanTo(null, null);
         }
 
-        protected override async Task OnInitializedAsync()
+        private void ZoomOn(double scale)
+        {
+            if (selectedSample is null)
+                return;
+
+            var x = XAxes?.First();
+            if (x is null)
+                return;
+
+            var range = 0.0;
+            if (x.MinLimit is null || x.MaxLimit is null)
+            {
+                range = (double)(x.VisibleDataBounds.Max - x.VisibleDataBounds.Min) * scale * 0.5;
+
+            }
+            else
+            {
+                range = (double)(x.MaxLimit - x.MinLimit) * scale * 0.5;
+            }
+
+            var dateInValue = selectedSample.Data.Date.ToOADate();
+            PanTo(dateInValue - range, dateInValue + range);
+        }
+
+        private void ZoomInOn()
+        {
+            ZoomOn(0.5);
+        }
+
+        private void ZoomOutOn()
+        {
+            ZoomOn(2);
+        }
+
+        private void SetupAxes()
+        {
+            {
+                Func<double, string> labeler = date => string.Format("{0:yy/MM/dd}", System.DateTime.FromOADate(date));
+
+                var xAxis = new Axis()
+                {
+                    Labeler = labeler,
+                    LabelsRotation = -20,
+                    TextSize = 10,
+                    SeparatorsPaint = new SolidColorPaint(SKColors.LightSlateGray)
+                    {
+                        StrokeThickness = 1,
+                        PathEffect = new DashEffect(new float[] { 3, 3 })
+                    }
+                };
+
+                XAxes = new List<Axis> { xAxis };
+            }
+
+            {
+                Func<double, string> labeler = c => { var e = (Sample.TestCase)(Enum.ToObject(typeof(Sample.TestCase), (int)c)); return e.GetStringValue() ?? string.Empty; };
+                var yAxis = new Axis()
+                {
+                    Labeler = labeler,
+                    MinStep = 1,
+                    MaxLimit = 5.5,
+                    MinLimit = -0.5,
+                    IsInverted = true,
+                };
+
+                YAxes = new List<Axis> { yAxis };
+            }
+        }
+
+        protected override void OnInitialized()
         {
             ChartTitle = new LabelVisual
             {
@@ -270,29 +324,9 @@ namespace TimelineSample.Pages
                 Paint = new SolidColorPaint(SKColors.DarkSlateGray)
             };
 
+            SetupAxes();
+
             GeneratePlotData();
-        }
-
-        protected override void OnAfterRender(bool firstRender)
-        {
-            base.OnAfterRender(firstRender);
-            if (chart == null)
-                return;
-
-            if (firstRender)
-            {
-                chart.Title = ChartTitle;
-                if(chartSeries is not null)
-                    chart.Series = chartSeries;
-                chart.XAxes = XAxes;
-                chart.YAxes = YAxes;
-                chart.ZoomMode = LiveChartsCore.Measure.ZoomAndPanMode.X;
-                chart.EasingFunction = null;
-                chart.Tooltip = chartTooltip;
-                chart.TooltipFindingStrategy = LiveChartsCore.Measure.TooltipFindingStrategy.CompareAllTakeClosest;
-                chart.LegendPosition = LiveChartsCore.Measure.LegendPosition.Bottom;
-                chart.Legend = chartLegend;
-            }
         }
     }
 
