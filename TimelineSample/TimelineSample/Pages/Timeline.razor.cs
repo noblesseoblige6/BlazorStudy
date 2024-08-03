@@ -282,7 +282,7 @@ namespace TimelineSample.Pages
         private void SetupAxes()
         {
             {
-                Func<double, string> labeler = date => string.Format("{0:yy/MM/dd}", System.DateTime.FromOADate(date));
+                Func<double, string> labeler = date => string.Format("{0:yy/MM/dd\nHH:mm:ss:fff}", System.DateTime.FromOADate(date));
 
                 var xAxis = new Axis()
                 {
