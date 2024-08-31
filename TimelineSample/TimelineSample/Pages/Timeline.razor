@@ -22,13 +22,13 @@
             Reset zoom
         </FluentTooltip>
     </FluentButton>
-    <FluentButton Id="ZoomInOn" OnClick="@ZoomInOn" Disabled="@(selectedSample is null)">
+    <FluentButton Id="ZoomInOn" OnClick="@ZoomInOn" Disabled="@(selection.HasSelected() is false)">
         <FluentIcon Value="@(new Icons.Regular.Size24.ZoomIn())" Color="@Color.Error" />
         <FluentTooltip Anchor="ZoomInOn">
             Zoom in Selected Sample
         </FluentTooltip>
     </FluentButton>
-    <FluentButton Id="ZoomOutOn" OnClick="@ZoomOutOn" Disabled="@(selectedSample is null)">
+    <FluentButton Id="ZoomOutOn" OnClick="@ZoomOutOn" Disabled="@(selection.HasSelected() is false)">
         <FluentIcon Value="@(new Icons.Regular.Size24.ZoomOut())" Color="@Color.Error" />
         <FluentTooltip Anchor="ZoomOutOn">
             Zoom out Selected Sample

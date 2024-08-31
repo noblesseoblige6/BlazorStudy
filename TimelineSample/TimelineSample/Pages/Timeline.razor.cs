@@ -11,13 +11,10 @@ using LiveChartsCore.SkiaSharpView.Painting;
 using LiveChartsCore.SkiaSharpView.Painting.Effects;
 using LiveChartsCore.SkiaSharpView.VisualElements;
 using LiveChartsCore.VisualElements;
-using TimelineSample.Shared;
 using Microsoft.AspNetCore.Components;
 using SkiaSharp;
-using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Collections.ObjectModel;
+using TimelineSample.Shared;
 
 namespace TimelineSample.Pages
 {
@@ -75,6 +72,111 @@ namespace TimelineSample.Pages
 
     public partial class Timeline
     {
+        internal class SelectionController
+        {
+            ~SelectionController()
+            {
+                ResetSelect();
+                selected = null;
+            }
+
+            public bool OnHover(ref ChartPoint<PlotData<Sample>, CircleGeometry, LabelGeometry>? point)
+            {
+                if (point is null || point?.Visual is null || point?.Model is null)
+                    return false;
+
+                point.Model.IsHoverOn = true;
+
+                if (IsSelected(point) is false)
+                    point.Visual.Fill = new SolidColorPaint(SKColors.Yellow);
+
+                return true;
+            }
+
+            public bool OnHoverLost(ref ChartPoint<PlotData<Sample>, CircleGeometry, LabelGeometry>? point)
+            {
+                if (point is null || point?.Visual is null || point?.Model is null)
+                    return false;
+
+                point.Model.IsHoverOn = false;
+
+                if(IsSelected(point) is false)
+                    (point.Visual.Fill, point.Visual.Stroke) = Sample.FillAndStroke(point.Model.Data.Status);
+
+                return true;
+            }
+
+            public bool OnSelect(ref ChartPoint<PlotData<Sample>, CircleGeometry, LabelGeometry>? point)
+            {
+                if (point?.Visual is null || point?.Model is null || point.Model.IsHoverOn is false)
+                    return false;
+
+                ResetSelect();
+                selected = point;
+
+                selected.Visual.Fill = new SolidColorPaint(new SKColor(0, 123, 255));
+
+                return true;
+            }
+
+            private void ResetSelect()
+            {
+                if (selected is null || selected?.Visual is null || selected?.Model is null)
+                    return;
+
+                (selected.Visual.Fill, selected.Visual.Stroke) = Sample.FillAndStroke(selected.Model.Data.Status);
+            }
+
+            public bool IsSelected(ChartPoint<PlotData<Sample>, CircleGeometry, LabelGeometry>? p)
+            {
+                if (selected is null || p is null)
+                    return false;
+
+                return selected.Model == p.Model;
+            }
+
+            public bool HasSelected()
+            {
+                return selected != null;
+            }
+
+            public PlotData<Sample>? Data
+            {
+                get
+                {
+                    if (HasSelected())
+                        return selected.Model;
+                    else
+                        return null;
+                }
+            }
+
+            public RectangularSection[] Sections
+            {
+                get
+                {
+                    if(selected is null || selected?.Model is null)
+                        return Array.Empty<RectangularSection>();
+
+                    var session = new RectangularSection
+                    {
+                        Xi = selected.Model.Data.Date.ToOADate(),
+                        Xj = selected.Model.Data.Date.ToOADate(),
+                        Stroke = new SolidColorPaint
+                        {
+                            Color = SKColors.Red,
+                            StrokeThickness = 3,
+                            PathEffect = new DashEffect(new float[] { 6, 6 })
+                        }
+                    };
+
+                    return new RectangularSection[] { session };
+                }
+            }
+
+            private ChartPoint<PlotData<Sample>, CircleGeometry, LabelGeometry>? selected;
+        }
+
         [Inject]
         public HttpClient? Http { get; set; }
 
@@ -100,9 +202,9 @@ namespace TimelineSample.Pages
 
         public RectangularSection[]? Sections { get; set; }
 
-        private PlotData<Sample>? selectedSample;
+        private SelectionController selection = new();
 
-        private int TestsetCount { get; set; } = 32;
+        private int TestsetCount { get; set; } = 64;
 
         private void OnTestsetCountChanged()
         {
@@ -140,55 +242,27 @@ namespace TimelineSample.Pages
 
         private void OnPointerDown(IChartView chart, ChartPoint<PlotData<Sample>, CircleGeometry, LabelGeometry>? point)
         {
-            if (point?.Visual is null || point?.Model is null)
+            if (selection.OnSelect(ref point) is false)
                 return;
 
-            if (point.Model.IsHoverOn == false)
-                return;
-
-            selectedSample = point.Model;
             OnPlotPointClicked.InvokeAsync(point.Model.Data.Id);
+            Sections = selection.Sections;
 
-            Sections = new RectangularSection[]
-            {
-                new RectangularSection
-                {
-                    Xi = selectedSample.Data.Date.ToOADate(),
-                    Xj = selectedSample.Data.Date.ToOADate(),
-                    Stroke = new SolidColorPaint
-                    {
-                        Color = SKColors.Red,
-                        StrokeThickness = 3,
-                        PathEffect = new DashEffect(new float[] { 6, 6 })
-                    }
-                },
-            };
-
-            point.Visual.Fill = new SolidColorPaint(new SKColor(0, 123, 255));
-            chart.Invalidate(); // <- ensures the canvas is redrawn after we set the fill
+            // ensures the canvas is redrawn after we set the fill
+            chart.Invalidate();
         }
 
         private void OnPointerHover(IChartView chart, ChartPoint<PlotData<Sample>, CircleGeometry, LabelGeometry>? point)
         {
-            if (point?.Visual is null || point?.Model is null)
+            if (selection.OnHover(ref point) is false)
                 return;
-
-            point.Model.IsHoverOn = true;
-
-            // emphasize by filling
-            point.Visual.Fill = new SolidColorPaint(SKColors.Yellow);
             chart.Invalidate();
         }
 
         private void OnPointerHoverLost(IChartView chart, ChartPoint<PlotData<Sample>, CircleGeometry, LabelGeometry>? point)
         {
-            if (point?.Visual is null || point?.Model is null)
+            if (selection.OnHoverLost(ref point) is false)
                 return;
-
-            point.Model.IsHoverOn = false;
-
-            // revert fill and stroke
-            (point.Visual.Fill, point.Visual.Stroke) = Sample.FillAndStroke(point.Model.Data.Status);
             chart.Invalidate();
         }
 
@@ -221,7 +295,7 @@ namespace TimelineSample.Pages
                 };
             }
 
-            selectedSample = null;
+            selection = new();
             Sections = null;
             chartSeries.Clear();
             foreach (Sample.TestCase val in Enum.GetValues(typeof(Sample.TestCase)))
@@ -247,7 +321,7 @@ namespace TimelineSample.Pages
 
         private void ZoomOn(double scale)
         {
-            if (selectedSample is null)
+            if (selection.HasSelected() is false)
                 return;
 
             var x = XAxes?.First();
@@ -265,7 +339,8 @@ namespace TimelineSample.Pages
                 range = (double)(x.MaxLimit - x.MinLimit) * scale * 0.5;
             }
 
-            var dateInValue = selectedSample.Data.Date.ToOADate();
+            var data = selection.Data;
+            var dateInValue = data?.Data.Date.ToOADate();
             PanTo(dateInValue - range, dateInValue + range);
         }
 
