@@ -1,17 +1,19 @@
 ﻿@using LiveChartsCore.SkiaSharpView.Blazor
 
-<CartesianChart @ref="chart"
-                Title="ChartTitle"
-                Series="chartSeries"
-                XAxes="XAxes"
-                YAxes="YAxes"
-                Sections="Sections"
-                ZoomMode="LiveChartsCore.Measure.ZoomAndPanMode.PanX"
-                Tooltip="chartTooltip"
-                TooltipFindingStrategy="LiveChartsCore.Measure.TooltipFindingStrategy.CompareAllTakeClosest"
-                LegendPosition="LiveChartsCore.Measure.LegendPosition.Top"
-                Legend="chartLegend">
-</CartesianChart>
+<div onwheel="event.preventDefault()">
+    <CartesianChart @ref="chart"
+                    Title="ChartTitle"
+                    Series="chartSeries"
+                    XAxes="XAxes"
+                    YAxes="YAxes"
+                    Sections="Sections"
+                    ZoomMode="LiveChartsCore.Measure.ZoomAndPanMode.X"
+                    Tooltip="chartTooltip"
+                    TooltipFindingStrategy="LiveChartsCore.Measure.TooltipFindingStrategy.CompareAllTakeClosest"
+                    LegendPosition="LiveChartsCore.Measure.LegendPosition.Top"
+                    Legend="chartLegend">
+    </CartesianChart>
+</div>
 
 <FluentStack Orientation="Orientation.Horizontal">
     <FluentButton Id="ResetZoom" OnClick="@ResetZoom">
@@ -32,5 +34,6 @@
             Zoom out Selected Sample
         </FluentTooltip>
     </FluentButton>
-    <FluentSlider @bind-Value="TestsetCount" @bind-Value:after="OnTestsetCountChanged" Min="1" Max="128" Step="1"></FluentSlider>
+    <FluentLabel>@TestsetCount</FluentLabel>
+    <FluentSlider @bind-Value="TestsetCount" @bind-Value:after="OnTestsetCountChanged" Min="1" Max="4096" Step="1"></FluentSlider>
 </FluentStack>
