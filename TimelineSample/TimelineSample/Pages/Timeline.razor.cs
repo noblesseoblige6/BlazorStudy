@@ -145,7 +145,7 @@ namespace TimelineSample.Pages
                 get
                 {
                     if (HasSelected())
-                        return selected.Model;
+                        return selected?.Model;
                     else
                         return null;
                 }
@@ -242,7 +242,7 @@ namespace TimelineSample.Pages
 
         private void OnPointerDown(IChartView chart, ChartPoint<PlotData<Sample>, CircleGeometry, LabelGeometry>? point)
         {
-            if (selection.OnSelect(ref point) is false)
+            if (selection.OnSelect(ref point) is false || point?.Model is null)
                 return;
 
             OnPlotPointClicked.InvokeAsync(point.Model.Data.Id);
@@ -509,6 +509,9 @@ namespace TimelineSample.Pages
                 return;
 
             var location = foundPoints.GetTooltipLocation((LvcSize)size, chart);
+
+            if (_stackPanel is null)
+                return;
 
             _stackPanel.X = location.X;
             _stackPanel.Y = location.Y;
